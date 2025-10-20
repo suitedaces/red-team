@@ -731,12 +731,6 @@ def generate_html(results, test_cases, policy, prompts, stats):
             judge_reasoning = failure.get('judge_reasoning', '')
             full_conversation = failure.get('full_conversation', '')
 
-            # Extract agent's problematic response (last ASSISTANT turn)
-            import re
-            assistant_pattern = r'\[Turn \d+ - ASSISTANT\](.*?)(?=\[Turn \d+ - USER\]|\Z)'
-            matches = re.findall(assistant_pattern, full_conversation, re.DOTALL)
-            problematic_response = matches[-1].strip()[:300] + '...' if matches and len(matches[-1].strip()) > 300 else (matches[-1].strip() if matches else 'N/A')
-
             html += f"""
                     <div style="border: 1px solid #fecaca; background: #fef2f2; padding: 20px; border-radius: 6px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
@@ -751,11 +745,6 @@ def generate_html(results, test_cases, policy, prompts, stats):
                         <div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 4px; border-left: 3px solid #dc2626;">
                             <div style="font-weight: 600; font-size: 13px; color: #991b1b; margin-bottom: 5px;">Attack Goal</div>
                             <div style="font-size: 13px; color: #374151;">{goal}</div>
-                        </div>
-
-                        <div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 4px;">
-                            <div style="font-weight: 600; font-size: 13px; color: #6b7280; margin-bottom: 5px;">Agent's Problematic Response</div>
-                            <div style="font-size: 13px; color: #374151; font-style: italic;">"{problematic_response}"</div>
                         </div>
 
                         <details>

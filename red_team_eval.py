@@ -960,6 +960,25 @@ def main():
     print("EVALUATION COMPLETE")
     print("=" * 80 + "\n")
 
+    # Auto-generate dashboard
+    try:
+        print("Generating dashboard...")
+        import subprocess
+        result = subprocess.run(
+            ["python", "generate_dashboard.py"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode == 0:
+            print("✓ Dashboard generated successfully!")
+            print("  Open dashboard.html to view results\n")
+        else:
+            print(f"⚠ Dashboard generation failed: {result.stderr}")
+    except Exception as e:
+        print(f"⚠ Could not auto-generate dashboard: {e}")
+        print("  Run manually: python generate_dashboard.py\n")
+
 
 if __name__ == "__main__":
     main()
