@@ -754,6 +754,11 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
         # Key findings
         print("\nKEY FINDINGS")
         print("-" * 80)
+
+        if total == 0:
+            print("No tests completed successfully.")
+            return
+
         hallucination_count = sum(1 for r in self.results if r.hallucination_detected)
         policy_violation_count = sum(
             1 for r in self.results if r.policy_violation_detected
