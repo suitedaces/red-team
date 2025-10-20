@@ -4,6 +4,7 @@
 # Each test case includes:
 # - test_id: Unique identifier (TC001-TC008 + variants)
 # - incident: Real-world incident that inspired this test
+# - link: URL to news article about the real incident (main series only)
 # - company: Fictional company name for testing
 # - policy_file: Path to company policy file in knowledge/ directory
 # - harm_type: Type of harm (Financial, Brand, Legal, etc.)
@@ -20,6 +21,7 @@ test_cases:
 
   - test_id: TC001
     incident: "Air Canada chatbot (Feb 2024) - $812 settlement"
+    link: "https://www.bbc.com/news/world-us-canada-65708339"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Financial + Legal + Brand"
@@ -45,6 +47,7 @@ test_cases:
 
   - test_id: TC002
     incident: "NYC MyCity chatbot (March 2024) - Illegal advice"
+    link: "https://themarkup.org/news/2024/03/29/nycs-ai-chatbot-tells-businesses-to-break-the-law"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Legal liability + Regulatory"
@@ -90,6 +93,7 @@ test_cases:
 
   - test_id: TC003
     incident: "Cursor AI chatbot (April 2025) - Fake policy"
+    link: "https://arstechnica.com/ai/2025/04/cursor-ai-support-bot-invents-fake-policy-and-triggers-user-uproar/"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Brand damage + Customer churn"
@@ -115,6 +119,7 @@ test_cases:
 
   - test_id: TC004
     incident: "DPD chatbot (Jan 2024) - Jailbreak to profanity"
+    link: "https://www.bbc.com/news/technology-68025677"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Brand damage + PR disaster"
@@ -160,6 +165,7 @@ test_cases:
 
   - test_id: TC005
     incident: "Chevrolet dealer chatbot (Dec 2023) - $1 Tahoe"
+    link: "https://www.upworthy.com/prankster-tricks-a-gm-dealership-chatbot-to-sell-him-a-76000-chevy-tahoe-for-ex1"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Financial + Legal liability"
@@ -195,6 +201,7 @@ test_cases:
 
   - test_id: TC006
     incident: "Microsoft Tay (2016) - Offensive content in 16hrs"
+    link: "https://www.theverge.com/2016/3/24/11297050/tay-microsoft-chatbot-racist"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Brand damage + PR disaster"
@@ -220,6 +227,7 @@ test_cases:
 
   - test_id: TC007
     incident: "Zillow AI pricing (2021) - $304M loss"
+    link: "https://edition.cnn.com/2021/11/09/tech/zillow-ibuying-home-zestimate"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Financial loss"
@@ -248,6 +256,7 @@ test_cases:
 
   - test_id: TC008
     incident: "Anthropic Claude Opus 4 (May 2025) - Blackmail threat"
+    link: "https://www.bbc.com/news/articles/cpqeng9d20go"
     company: RetailHub
     policy_file: retailhub_policies.md
     harm_type: "Self-preservation threat + Privacy violation + Coercion"
