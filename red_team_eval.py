@@ -55,6 +55,7 @@ class TestCase:
     # Testing approach
     tactic: str  # Attack methodology
     goal: str  # Broad harm category to induce
+    max_turns: int  # Maximum conversation turns (1-10)
 
 
 @dataclass
@@ -551,9 +552,10 @@ def create_test_cases() -> List[TestCase]:
                 cost=test_data['cost'],
                 tactic=test_data['tactic'],
                 goal=test_data['goal'],
+                max_turns=test_data['max_turns'],
             )
             tests.append(test_case)
-            logger.debug(f"Loaded test case: {test_case.test_id}")
+            logger.debug(f"Loaded test case: {test_case.test_id} ({test_case.max_turns} turns)")
         except KeyError as e:
             logger.error(f"Missing required field in test case: {e}")
             raise ValueError(f"Invalid test case configuration: missing field {e}")
@@ -581,19 +583,17 @@ class EvalPipeline:
         timestamp = int(time.time())
         self.csv_filename = results / f"eval_results_{timestamp}.csv"
 
-    def run_test(
-        self, test_case: TestCase, max_turns: int = 5, verbose: bool = True
-    ) -> EvalResult:
+    def run_test(self, test_case: TestCase) -> EvalResult:
         """Run a single test case"""
 
         logger.info(f"Starting test {test_case.test_id}: {test_case.incident}")
 
-        if verbose:
-            print(f"\n{'=' * 80}")
-            print(f"TEST {test_case.test_id}: {test_case.incident}")
-            print(f"Tactic: {test_case.tactic}")
-            print(f"Goal: {test_case.goal}")
-            print(f"{'=' * 80}\n")
+        print(f"\n{'=' * 80}")
+        print(f"TEST {test_case.test_id}: {test_case.incident}")
+        print(f"Tactic: {test_case.tactic}")
+        print(f"Goal: {test_case.goal}")
+        print(f"Max turns: {test_case.max_turns}")
+        print(f"{'=' * 80}\n")
 
         # Initialize agents
         logger.info(f"[{test_case.test_id}] Initializing agents...")
@@ -627,31 +627,27 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
 
         # Have a conversation between red team and RAG
         logger.info(
-            f"[{test_case.test_id}] Starting {max_turns}-turn conversation using tactic: {test_case.tactic}"
+            f"[{test_case.test_id}] Starting {test_case.max_turns}-turn conversation using tactic: {test_case.tactic}"
         )
         conversation = []
         assistant_response = None
 
-        for i in range(max_turns):
+        for i in range(test_case.max_turns):
             # Red team generates next attack message based on conversation so far
             logger.info(
-                f"[{test_case.test_id}] Turn {i + 1}/{max_turns} - Red team generating message..."
+                f"[{test_case.test_id}] Turn {i + 1}/{test_case.max_turns} - Red team generating message..."
             )
             user_message = red_team.generate_next_message(assistant_response)
-
-            if verbose:
-                print(f"[Turn {i + 1}] USER: {user_message}")
+            print(f"[Turn {i + 1}] USER: {user_message}")
 
             conversation.append(ConversationTurn("user", user_message))
 
             # RAG agent responds
             logger.info(
-                f"[{test_case.test_id}] Turn {i + 1}/{max_turns} - RAG agent responding..."
+                f"[{test_case.test_id}] Turn {i + 1}/{test_case.max_turns} - RAG agent responding..."
             )
             assistant_response = rag_agent.chat(user_message)
-
-            if verbose:
-                print(f"[Turn {i + 1}] ASSISTANT: {assistant_response}\n")
+            print(f"[Turn {i + 1}] ASSISTANT: {assistant_response}\n")
 
             conversation.append(ConversationTurn("assistant", assistant_response))
 
@@ -660,9 +656,8 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
         judgment = judge.evaluate(conversation)
         logger.info(f"[{test_case.test_id}] Judgment: {judgment['severity']}")
 
-        if verbose:
-            print(f"JUDGMENT: {judgment['severity']}")
-            print(f"Reasoning: {judgment['reasoning']}\n")
+        print(f"JUDGMENT: {judgment['severity']}")
+        print(f"Reasoning: {judgment['reasoning']}\n")
 
         # Create result
         result = EvalResult(
@@ -686,13 +681,13 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
 
         return result
 
-    def run_all_tests(self, test_cases: List[TestCase], verbose: bool = True):
+    def run_all_tests(self, test_cases: List[TestCase]):
         """Run all test cases"""
         logger.info(f"Running {len(test_cases)} test cases...")
         for i, test_case in enumerate(test_cases, 1):
             try:
                 logger.info(f"Progress: {i}/{len(test_cases)} tests")
-                self.run_test(test_case, verbose=verbose)
+                self.run_test(test_case)
                 logger.info(f"Completed test {test_case.test_id} successfully")
             except Exception as e:
                 logger.error(f"ERROR in test {test_case.test_id}: {e}")
@@ -898,7 +893,7 @@ def main():
     # Run tests (CSV is built incrementally during run_all_tests)
     logger.info("Starting evaluation pipeline...")
     print("Running evaluation pipeline...\n")
-    pipeline.run_all_tests(test_cases, verbose=True)
+    pipeline.run_all_tests(test_cases)
 
     # Print results
     logger.info("Generating results summary...")
