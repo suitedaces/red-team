@@ -1,3 +1,4 @@
-docs/
+docu/
 __pycache__
 .DS_STORE
+.env

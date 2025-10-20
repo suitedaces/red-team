@@ -61,6 +61,20 @@ def find_latest_csv():
     return max(csv_files, key=get_timestamp)
 
 
+def get_all_csv_runs():
+    """Get all CSV files sorted by timestamp (newest first)."""
+    results_dir = get_project_root() / "results"
+    csv_files = list(results_dir.glob("eval_results_*.csv"))
+
+    def get_timestamp(path):
+        import re
+        match = re.search(r'eval_results_(\d+)\.csv', path.name)
+        return int(match.group(1)) if match else 0
+
+    # Sort by timestamp descending (newest first)
+    return sorted(csv_files, key=get_timestamp, reverse=True)
+
+
 def read_csv_results(csv_path):
     """Read evaluation results from CSV file."""
     results = []
@@ -96,7 +110,7 @@ def extract_prompts():
 
     # Extract RAG system prompt (in VulnerableRAGAgent.chat method)
     rag_match = re.search(
-        r'# system prompt - intentionally vulnerable for testing\s+system_prompt = f"""(.*?)"""',
+        r'# system prompt\s+system_prompt = f"""(.*?)"""',
         content,
         re.DOTALL
     )
@@ -712,8 +726,9 @@ def generate_html(results, test_cases, policy, prompts, stats):
             </table>
 """
 
-    # Add failures section - show all failures in expanded table
+    # Add failures section - only if failures exist
     failures = [r for r in results if r.get('severity', '') != 'PASS']
+
     if failures:
         html += f"""
             <details style="margin-top: 20px;">
@@ -767,13 +782,153 @@ def generate_html(results, test_cases, policy, prompts, stats):
                 </div>
             </details>
 """
+    else:
+        # No failures - all tests passed
+        html += """
+            <div style="margin-top: 20px; padding: 15px; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 4px;">
+                <div style="font-weight: 600; color: #065f46; margin-bottom: 5px;">✓ All Tests Passed</div>
+                <div style="font-size: 14px; color: #374151;">No failures detected across all test variants.</div>
+            </div>
+"""
 
     html += """
-            <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 14px; line-height: 1.6; color: #4b5563;">
-                <strong>About this evaluation:</strong> Red team simulation testing RetailHub's customer support agent against real-world attack patterns.
-                Each test includes full conversation transcripts and judge evaluations (expand sections below to view).
-                System configuration available in collapsible section below.
+        </div>
+
+        <div class="section">
+            <h2>From Incidents to Confidence</h2>
+            <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">
+                How real-world AI disasters map to comprehensive testing coverage
+            </p>
+"""
+
+    # Group results by incident for confidence mapping
+    incident_confidence_map = {}
+
+    if not incident_groups:
+        html += """
+            <div style="padding: 30px; text-align: center; color: #6b7280;">
+                No test results to display. Run evaluations to see incident coverage.
             </div>
+        </div>
+"""
+    else:
+        for incident_id in sorted(incident_groups.keys()):
+            tests = incident_groups[incident_id]
+            main_test = test_map.get(incident_id, {})
+
+            incident_name = main_test.get('incident', incident_id)
+            harm_type = main_test.get('harm_type', '')
+            tactic = main_test.get('tactic', '')
+            cost = main_test.get('cost', '')
+
+            # Calculate pass rate for this incident
+            total_tests = len(tests)
+            passed_tests = sum(1 for t in tests if t['result'].get('severity') == 'PASS')
+            pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+
+            # Get severities
+            failures = [t for t in tests if t['result'].get('severity') != 'PASS']
+            max_severity = 'PASS'
+            if failures:
+                severity_order = {'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3, 'P4': 4}
+                max_severity = min(failures, key=lambda t: severity_order.get(t['result'].get('severity', 'P4'), 5))['result'].get('severity', 'P2')
+
+            incident_confidence_map[incident_id] = {
+                'name': incident_name,
+                'harm': harm_type,
+                'cost': cost,
+                'tactic': tactic,
+                'tests': [t['test_case'].get('test_id', '') for t in tests],
+                'total': total_tests,
+                'passed': passed_tests,
+                'pass_rate': pass_rate,
+                'max_severity': max_severity
+            }
+
+        for incident_id, data in incident_confidence_map.items():
+            # Determine confidence level and color
+            if data['pass_rate'] == 100:
+                confidence = "PROTECTED"
+                confidence_color = "#10b981"
+                confidence_bg = "#d1fae5"
+            elif data['pass_rate'] >= 75:
+                confidence = "MOSTLY PROTECTED"
+                confidence_color = "#3b82f6"
+                confidence_bg = "#dbeafe"
+            elif data['pass_rate'] >= 50:
+                confidence = "PARTIAL PROTECTION"
+                confidence_color = "#f59e0b"
+                confidence_bg = "#fef3c7"
+            else:
+                confidence = "VULNERABLE"
+                confidence_color = "#dc2626"
+                confidence_bg = "#fee2e2"
+
+            html += f"""
+            <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: white;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 5px;">{incident_id}: {data['name'].split(' - ')[0]}</div>
+                        <div style="font-size: 13px; color: #6b7280;">{data['name']}</div>
+                    </div>
+                    <div style="background: {confidence_bg}; color: {confidence_color}; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 13px;">
+                        {confidence}
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: auto 40px auto 40px auto 40px auto 40px auto; align-items: center; gap: 0; font-size: 13px; line-height: 1.6;">
+                    <!-- Business Risk -->
+                    <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #dc2626;">
+                        <div style="font-weight: 600; color: #991b1b; margin-bottom: 5px;">Business Risk</div>
+                        <div style="color: #374151;">{data['cost']}</div>
+                    </div>
+
+                    <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
+
+                    <!-- Safeguards -->
+                    <div style="background: #f3e8ff; padding: 15px; border-radius: 6px; border-left: 3px solid #8b5cf6;">
+                        <div style="font-weight: 600; color: #6b21a8; margin-bottom: 5px;">Safeguards</div>
+                        <div style="color: #374151; font-size: 12px; line-height: 1.5;">
+                            ✓ RAG + Policy<br/>
+                            ✓ Judge (9 checks)<br/>
+                            ✓ Response protocol
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
+
+                    <!-- Attack Tactic -->
+                    <div style="background: #e0e7ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 5px;">Attack Tactic</div>
+                        <div style="color: #374151;">{data['tactic']}</div>
+                    </div>
+
+                    <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
+
+                    <!-- Tests & Results -->
+                    <div style="background: #f0fdf4; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
+                        <div style="font-weight: 600; color: #065f46; margin-bottom: 5px;">Tests</div>
+                        <div style="color: #374151;">{data['total']} variants</div>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #d1fae5;">
+                            <div style="font-weight: 600; color: #065f46; margin-bottom: 3px;">Result</div>
+                            <div style="color: #374151;">{data['passed']}/{data['total']} passed ({data['pass_rate']:.0f}%)</div>
+"""
+
+            if data['max_severity'] != 'PASS':
+                html += f"""
+                            <div style="margin-top: 5px;">
+                                <span class="severity-badge {data['max_severity']}" style="font-size: 11px;">{data['max_severity']} detected</span>
+                            </div>
+"""
+
+            html += """
+                        </div>
+                    </div>
+                </div>
+            </div>
+"""
+
+        html += """
         </div>
 
         <div class="section">
@@ -972,25 +1127,144 @@ def generate_html(results, test_cases, policy, prompts, stats):
     return html
 
 
+def generate_html_with_all_runs(all_runs_data, test_cases, policy, prompts):
+    """Generate HTML dashboard with all runs - toggle with dropdown."""
+    from datetime import datetime
+    import re
+
+    # Generate first run to extract CSS
+    first_html = generate_html(all_runs_data[0]['results'], test_cases, policy, prompts, all_runs_data[0]['stats'])
+
+    # Extract CSS from first run
+    style_match = re.search(r'<style>(.*?)</style>', first_html, re.DOTALL)
+    css_content = style_match.group(1) if style_match else ""
+
+    # Build dropdown options and render each run's content
+    dropdown_options = ""
+    run_contents = ""
+
+    for idx, run_data in enumerate(all_runs_data):
+        timestamp = run_data['timestamp']
+        # Format timestamp - human readable
+        dt = datetime.fromtimestamp(timestamp)
+        formatted_date = dt.strftime('%b %d, %Y at %I:%M %p')
+
+        # Add to dropdown
+        selected = ' selected' if idx == 0 else ''
+        dropdown_options += f'<option value="{idx}"{selected}>{formatted_date} ({run_data["stats"]["total"]} tests, {run_data["stats"]["pass_rate"]:.0f}% pass)</option>\n'
+
+        # Generate full HTML content for this run
+        run_html_body = generate_html(run_data['results'], test_cases, policy, prompts, run_data['stats'])
+
+        # Extract just the body content (between <body> tags)
+        body_match = re.search(r'<body>(.*)</body>', run_html_body, re.DOTALL)
+        if body_match:
+            content = body_match.group(1)
+        else:
+            content = run_html_body
+
+        # Wrap in div
+        display_style = '' if idx == 0 else ' style="display: none;"'
+        run_contents += f'<div class="run-content" id="run-{idx}"{display_style}>{content}</div>\n'
+
+    # Build final HTML with dropdown and CSS from generate_html
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Team Evaluation Dashboard</title>
+    <style>
+        {css_content}
+
+        .run-selector {{
+            background: white;
+            padding: 15px 30px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }}
+
+        .run-selector label {{
+            font-weight: 600;
+            color: #374151;
+        }}
+
+        .run-selector select {{
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #1f2937;
+            min-width: 400px;
+        }}
+
+        .run-content {{
+            animation: fadeIn 0.3s;
+        }}
+
+        @keyframes fadeIn {{
+            from {{ opacity: 0; }}
+            to {{ opacity: 1; }}
+        }}
+    </style>
+</head>
+<body>
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <div class="run-selector">
+            <label for="run-select">Evaluation Run:</label>
+            <select id="run-select" onchange="switchRun(this.value)">
+                {dropdown_options}
+            </select>
+        </div>
+
+        {run_contents}
+    </div>
+
+    <script>
+    function switchRun(runIndex) {{
+        // Hide all runs
+        document.querySelectorAll('.run-content').forEach(el => el.style.display = 'none');
+        // Show selected run
+        document.getElementById('run-' + runIndex).style.display = 'block';
+    }}
+    </script>
+</body>
+</html>
+"""
+    return html
+
+
 def main():
     """Main execution function."""
     print("🎨 Generating Red Team Evaluation Dashboard...\n")
 
-    # Get CSV path from command line or find latest
-    if len(sys.argv) > 1:
-        csv_path = Path(sys.argv[1])
-        if not csv_path.is_absolute():
-            # Relative path - resolve from project root
-            csv_path = get_project_root() / sys.argv[1]
-        print(f"📊 Using specified CSV: {csv_path.name}")
-    else:
-        print("📊 Reading latest evaluation results...")
-        csv_path = find_latest_csv()
-        print(f"   Found: {csv_path.name}")
+    # Get all CSV runs
+    print("📊 Finding all evaluation runs...")
+    all_csv_files = get_all_csv_runs()
+    print(f"   Found {len(all_csv_files)} evaluation run(s)")
 
-    # Read all data
-    results = read_csv_results(csv_path)
-    print(f"   Loaded {len(results)} test results")
+    # Load data from ALL runs
+    all_runs_data = []
+    for csv_path in all_csv_files:
+        print(f"   Loading {csv_path.name}...")
+        results = read_csv_results(csv_path)
+        stats = calculate_stats(results)
+
+        # Extract timestamp
+        import re
+        match = re.search(r'eval_results_(\d+)\.csv', csv_path.name)
+        timestamp = int(match.group(1)) if match else 0
+
+        all_runs_data.append({
+            'timestamp': timestamp,
+            'results': results,
+            'stats': stats,
+            'filename': csv_path.name
+        })
 
     print("\n📋 Reading test cases...")
     test_cases = read_test_cases()
@@ -1004,13 +1278,9 @@ def main():
     prompts = extract_prompts()
     print(f"   Extracted {len(prompts)} prompts")
 
-    # Calculate statistics
-    print("\n📈 Calculating statistics...")
-    stats = calculate_stats(results)
-
-    # Generate HTML
+    # Generate HTML with all runs embedded
     print("\n🏗️  Generating HTML dashboard...")
-    html = generate_html(results, test_cases, policy, prompts, stats)
+    html = generate_html_with_all_runs(all_runs_data, test_cases, policy, prompts)
 
     # Write output to project root
     output_path = get_project_root() / "dashboard.html"
@@ -1019,12 +1289,17 @@ def main():
 
     print(f"\n✅ Dashboard generated: {output_path}")
     print(f"\n📊 Summary:")
-    print(f"   Total tests: {stats['total']}")
-    print(f"   Pass rate: {stats['pass_rate']:.1f}%")
-    print(f"   P0 (Critical): {stats['p0_count']}")
-    print(f"   P1 (High): {stats['p1_count']}")
-    print(f"   P2 (Medium): {stats['p2_count']}")
+    print(f"   {len(all_runs_data)} evaluation run(s) embedded in dashboard")
+    if all_runs_data:
+        latest = all_runs_data[0]['stats']
+        print(f"\n   Latest run:")
+        print(f"   Total tests: {latest['total']}")
+        print(f"   Pass rate: {latest['pass_rate']:.1f}%")
+        print(f"   P0 (Critical): {latest['p0_count']}")
+        print(f"   P1 (High): {latest['p1_count']}")
+        print(f"   P2 (Medium): {latest['p2_count']}")
     print(f"\n🌐 Open {output_path} in your browser to view")
+    print(f"   Use the dropdown to switch between different evaluation runs")
 
 
 if __name__ == "__main__":

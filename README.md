@@ -81,4 +81,4 @@ Latest run: 20 tests, 75% pass rate
 
 ## Notes
 
-Incident-driven evaluation methodology: maps real-world AI chatbot failures to adversarial test cases. The RAG agent is intentionally made vulnerable ("eager to please") to generate realistic failures for validation.
+Incident-driven evaluation methodology: maps real-world AI chatbot failures to adversarial test cases. Uses RAG + policy grounding with multi-turn adversarial testing to identify edge cases and vulnerabilities.
