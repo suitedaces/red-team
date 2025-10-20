@@ -889,9 +889,10 @@ def generate_html(results, test_cases, policy, prompts, stats):
                     <div style="background: #f3e8ff; padding: 15px; border-radius: 6px; border-left: 3px solid #8b5cf6;">
                         <div style="font-weight: 600; color: #6b21a8; margin-bottom: 5px;">Safeguards</div>
                         <div style="color: #374151; font-size: 12px; line-height: 1.5;">
-                            ✓ RAG + Policy<br/>
-                            ✓ Judge (9 checks)<br/>
-                            ✓ Response protocol
+                            ✓ Policy tool grounding<br/>
+                            ✓ Refusal protocol<br/>
+                            ✓ Verify before commit<br/>
+                            ✓ No fabrication rule
                         </div>
                     </div>
 
