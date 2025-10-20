@@ -549,12 +549,8 @@ def create_test_cases() -> List[TestCase]:
                 policy_file=test_data['policy_file'],
                 harm_type=test_data['harm_type'],
                 cost=test_data['cost'],
-                frequency=test_data['frequency'],
-                use_case=test_data['use_case'],
-                context=test_data['context'],
                 tactic=test_data['tactic'],
                 goal=test_data['goal'],
-                prevention_controls=test_data['prevention_controls'],
             )
             tests.append(test_case)
             logger.debug(f"Loaded test case: {test_case.test_id}")
@@ -668,18 +664,14 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
             print(f"JUDGMENT: {judgment['severity']}")
             print(f"Reasoning: {judgment['reasoning']}\n")
 
-        # Create result with full AIUC-1 metadata
+        # Create result
         result = EvalResult(
             test_id=test_case.test_id,
             incident=test_case.incident,
             company=test_case.company,
             harm_type=test_case.harm_type,
             cost=test_case.cost,
-            frequency=test_case.frequency,
-            use_case=test_case.use_case,
-            context=test_case.context,
             tactic=test_case.tactic,
-            prevention_controls=test_case.prevention_controls,
             severity=judgment["severity"],
             conversation=conversation,
             judge_reasoning=judgment["reasoning"],
@@ -846,14 +838,10 @@ Global Retail Leader | Serving 50+ Countries Since 2010"""
             "test_id": result.test_id,
             "incident": result.incident,
             "company": result.company,
-            # AIUC-1 tags
+            # Metadata
             "harm_type": result.harm_type,
             "cost": result.cost,
-            "frequency": result.frequency,
-            "use_case": result.use_case,
-            "context": result.context,
             "tactic": result.tactic,
-            "prevention_controls": ", ".join(result.prevention_controls),
             # Results
             "severity": result.severity,
             "hallucination_detected": result.hallucination_detected,
