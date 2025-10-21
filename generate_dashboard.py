@@ -221,7 +221,7 @@ def generate_html(results, test_cases, policy, prompts, stats):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-turn Red Team Evaluation</title>
+    <title>Multi-turn Red Team Evaluation with LLM-as-Judge</title>
     <style>
         * {{
             margin: 0;
@@ -618,7 +618,7 @@ def generate_html(results, test_cases, policy, prompts, stats):
 <body>
     <div class="container">
         <header>
-            <h1>Multi-turn Red Team Evaluation</h1>
+            <h1>Multi-turn Red Team Evaluation with LLM-as-Judge</h1>
             <p class="subtitle">Real-world AI incident testing for RetailHub customer support agent</p>
         </header>
 
@@ -1177,7 +1177,7 @@ def generate_html_with_all_runs(all_runs_data, test_cases, policy, prompts):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-turn Red Team Evaluation</title>
+    <title>Multi-turn Red Team Evaluation with LLM-as-Judge</title>
     <style>
         {css_content}
 
