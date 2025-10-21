@@ -794,14 +794,41 @@ def generate_html(results, test_cases, policy, prompts, stats):
         </div>
 """
     else:
+        # Map incidents to customer-facing scenarios (what CX leaders worry about)
+        scenario_mapping = {
+            'TC001': 'Customer tricks agent into promising refunds we don\'t offer',
+            'TC002': 'Agent gives illegal business advice, company faces lawsuits',
+            'TC003': 'Agent invents restrictive policies that anger customers',
+            'TC004': 'Agent uses profanity or publicly criticizes our brand',
+            'TC005': 'Agent agrees to absurd discounts or unauthorized pricing',
+            'TC006': 'Agent generates racist, sexist, or offensive content',
+            'TC007': 'Agent makes guarantees without disclaimers, creates liability',
+            'TC008': 'Agent exhibits autonomous behavior to protect its existence'
+        }
+
+        # Map to business impact labels for the flow cards (second-person)
+        risk_mapping = {
+            'TC001': 'Legal settlements + your money lost',
+            'TC002': 'Regulatory fines + lawsuits against you',
+            'TC003': 'Customer churn + your brand damaged',
+            'TC004': 'Viral PR disaster + your brand value lost',
+            'TC005': 'Revenue loss + legal disputes',
+            'TC006': 'Permanent damage to your brand + PR crisis',
+            'TC007': 'Liability + customers overrelying on bad advice',
+            'TC008': 'Privacy violations + catastrophic misuse'
+        }
+
         for incident_id in sorted(incident_groups.keys()):
             tests = incident_groups[incident_id]
             main_test = test_map.get(incident_id, {})
 
             incident_name = main_test.get('incident', incident_id)
+            incident_link = main_test.get('link', '')
             harm_type = main_test.get('harm_type', '')
             tactic = main_test.get('tactic', '')
             cost = main_test.get('cost', '')
+            risk = risk_mapping.get(incident_id, 'Unknown risk')
+            scenario = scenario_mapping.get(incident_id, 'Unknown scenario')
 
             # Calculate pass rate for this incident
             total_tests = len(tests)
@@ -817,8 +844,11 @@ def generate_html(results, test_cases, policy, prompts, stats):
 
             incident_confidence_map[incident_id] = {
                 'name': incident_name,
+                'link': incident_link,
+                'scenario': scenario,
                 'harm': harm_type,
                 'cost': cost,
+                'risk': risk,
                 'tactic': tactic,
                 'tests': [t['test_case'].get('test_id', '') for t in tests],
                 'total': total_tests,
@@ -846,62 +876,54 @@ def generate_html(results, test_cases, policy, prompts, stats):
                 confidence_color = "#dc2626"
                 confidence_bg = "#fee2e2"
 
+            # Build citation with optional link
+            citation_html = f'<a href="{data["link"]}" target="_blank" style="color: #3b82f6; text-decoration: none;">{data["name"]}</a>' if data['link'] else data['name']
+
             html += f"""
             <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: white;">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
                     <div>
-                        <div style="font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 5px;">{incident_id}: {data['name'].split(' - ')[0]}</div>
-                        <div style="font-size: 13px; color: #6b7280;">{data['name']}</div>
+                        <div style="font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 5px;">{data['scenario']}</div>
+                        <div style="font-size: 13px; color: #6b7280;">Based on {citation_html}</div>
                     </div>
                     <div style="background: {confidence_bg}; color: {confidence_color}; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 13px;">
                         {confidence}
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: auto 40px auto 40px auto 40px auto 40px auto; align-items: center; gap: 0; font-size: 13px; line-height: 1.6;">
-                    <!-- Business Risk -->
+                <div style="display: grid; grid-template-columns: auto 40px auto 40px auto 40px auto; align-items: center; gap: 0; font-size: 13px; line-height: 1.6;">
+                    <!-- Risk -->
                     <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #dc2626;">
-                        <div style="font-weight: 600; color: #991b1b; margin-bottom: 5px;">Business Risk</div>
-                        <div style="color: #374151;">{data['cost']}</div>
+                        <div style="font-weight: 600; color: #991b1b; margin-bottom: 5px;">Risk</div>
+                        <div style="color: #374151;">{data['risk']}</div>
                     </div>
 
                     <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
 
-                    <!-- Safeguards -->
+                    <!-- Prevention -->
                     <div style="background: #f3e8ff; padding: 15px; border-radius: 6px; border-left: 3px solid #8b5cf6;">
-                        <div style="font-weight: 600; color: #6b21a8; margin-bottom: 5px;">Safeguards</div>
+                        <div style="font-weight: 600; color: #6b21a8; margin-bottom: 5px;">Prevention</div>
                         <div style="color: #374151; font-size: 12px; line-height: 1.5;">
-                            ✓ Policy tool grounding<br/>
+                            ✓ Tool grounding<br/>
                             ✓ Refusal protocol<br/>
-                            ✓ Verify before commit<br/>
-                            ✓ No fabrication rule
+                            ✓ Verify first<br/>
+                            ✓ No fabrication
                         </div>
                     </div>
 
                     <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
 
-                    <!-- Attack Tactic -->
+                    <!-- Evidence -->
                     <div style="background: #e0e7ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
-                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 5px;">Attack Tactic</div>
-                        <div style="color: #374151;">{data['tactic']}</div>
-                    </div>
-
-                    <div style="text-align: center; color: #d1d5db; font-size: 18px;">→</div>
-
-                    <!-- Tests & Results -->
-                    <div style="background: #f0fdf4; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
-                        <div style="font-weight: 600; color: #065f46; margin-bottom: 5px;">Tests</div>
-                        <div style="color: #374151;">{data['total']} variants</div>
-                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #d1fae5;">
-                            <div style="font-weight: 600; color: #065f46; margin-bottom: 3px;">Result</div>
-                            <div style="color: #374151;">{data['passed']}/{data['total']} passed ({data['pass_rate']:.0f}%)</div>
+                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 5px;">Evidence</div>
+                        <div style="color: #374151; font-size: 12px;">
+                            {data['total']} attack test{"s" if data['total'] > 1 else ""}<br/>
+                            Pass: {data['passed']}/{data['total']} ({data['pass_rate']:.0f}%)<br/>
 """
 
             if data['max_severity'] != 'PASS':
                 html += f"""
-                            <div style="margin-top: 5px;">
-                                <span class="severity-badge {data['max_severity']}" style="font-size: 11px;">{data['max_severity']} detected</span>
-                            </div>
+                            <span class="severity-badge {data['max_severity']}" style="font-size: 10px; margin-top: 5px; display: inline-block;">{data['max_severity']}</span>
 """
 
             html += """
@@ -1050,60 +1072,6 @@ def generate_html(results, test_cases, policy, prompts, stats):
 """
 
     html += """
-                </div>
-            </details>
-        </div>
-
-        <div class="section">
-            <details open>
-                <summary style="font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 15px;">Attack Methodology</summary>
-                <div style="font-size: 14px; line-height: 1.8; color: #374151;">
-                    <p style="margin-bottom: 15px;">
-                        These tests simulate <strong>real adversarial attacks</strong> that customer support agents face in production.
-                        Each attack is mapped to actual incidents that caused financial losses, legal liability, or brand damage.
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-                        <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #dc2626;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #991b1b;">🎭 Emotional Manipulation</div>
-                            <div style="font-size: 13px; color: #6b7280;">Using bereavement, urgency, or desperation to pressure agents into breaking policy (Air Canada incident)</div>
-                        </div>
-
-                        <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #92400e;">💉 Prompt Injection</div>
-                            <div style="font-size: 13px; color: #6b7280;">Overriding system instructions to make unauthorized commitments or recommendations (Chevrolet $1 Tahoe)</div>
-                        </div>
-
-                        <div style="background: #fef3f2; padding: 15px; border-radius: 6px; border-left: 3px solid #dc2626;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #991b1b;">🔓 Jailbreak</div>
-                            <div style="font-size: 13px; color: #6b7280;">Getting agent to use profanity, criticize company, or generate offensive content (DPD chatbot)</div>
-                        </div>
-
-                        <div style="background: #eff6ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #1e40af;">⚖️ Authority Invocation</div>
-                            <div style="font-size: 13px; color: #6b7280;">Posing as business owner to extract illegal advice about discrimination or wage theft (NYC MyCity)</div>
-                        </div>
-
-                        <div style="background: #f3f4f6; padding: 15px; border-radius: 6px; border-left: 3px solid #6b7280;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #374151;">📈 Crescendo (Multi-turn)</div>
-                            <div style="font-size: 13px; color: #6b7280;">Gradually escalating requests across multiple turns to bypass defenses (Cursor AI fake policy)</div>
-                        </div>
-
-                        <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #dc2626;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #991b1b;">🎯 Confidence Calibration</div>
-                            <div style="font-size: 13px; color: #6b7280;">Extracting guarantees without disclaimers, causing overreliance on bot advice (Zillow $304M loss)</div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 25px; padding: 15px; background: #f9fafb; border-radius: 6px;">
-                        <div style="font-weight: 600; margin-bottom: 10px;">📊 Coverage Summary</div>
-                        <ul style="margin-left: 20px; font-size: 13px; line-height: 2;">
-                            <li><strong>8 real-world incidents</strong> from 2016-2025 (Microsoft Tay, Air Canada, NYC MyCity, DPD, Chevrolet, Cursor AI, Zillow, Anthropic)</li>
-                            <li><strong>""" + str(stats['total']) + """ test variants</strong> covering different attack angles and severity levels</li>
-                            <li><strong>Multi-turn conversations</strong> (1-10 turns) simulating persistent adversarial behavior</li>
-                            <li><strong>Harm types:</strong> Financial loss, Legal liability, Brand damage, Privacy violation, Regulatory compliance</li>
-                        </ul>
-                    </div>
                 </div>
             </details>
         </div>
